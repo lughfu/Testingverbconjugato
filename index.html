@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asyewi Verb Conjugator</title>
+<link rel="manifest" href="manifest.json">
+
+<style>
+:root {
+    --bg1: linear-gradient(135deg, #ffb6c1, #ffe0f0);
+    --card: rgba(255, 255, 255, 0.95);
+    --text: #222;
+    --accent: #d94b8a;
+    --table-header: #f8c1d7;
+    --table-row-light: #fff0f5;
+    --table-row-dark: #ffe6f0;
+}
+
+body.dark {
+    --bg1: linear-gradient(135deg, #0b1a2b, #1b3a50, #2c5364);
+    --card: rgba(25, 35, 50, 0.95);
+    --text: #eef6ff;
+    --accent: #7fdfff;
+    --table-header: #1b3a50;
+    --table-row-light: rgba(30, 50, 70, 0.8);
+    --table-row-dark: rgba(20, 35, 55, 0.9);
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, sans-serif;
+    background: var(--bg1);
+    color: var(--text);
+    transition: background 0.4s, color 0.4s;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 16px;
+}
+
+header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+header h1 {
+    font-size: 1.6rem;
+    margin: 0;
+}
+
+header button {
+    align-self: flex-end;
+}
+
+button {
+    border: none;
+    border-radius: 999px;
+    padding: 10px 18px;
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+button:hover {
+    transform: scale(1.05);
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.1);
+    margin: 16px 0;
+    box-sizing: border-box;
+}
+
+.card {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 16px;
+    margin-top: 20px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    transition: background 0.4s;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    min-width: 300px;
+}
+
+th, td {
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 1rem;
+}
+
+th {
+    background: var(--table-header);
+    color: white;
+    font-weight: 600;
+}
+
+tr:nth-child(even) {
+    background: var(--table-row-light);
+}
+tr:nth-child(odd) {
+    background: var(--table-row-dark);
+}
+
+.error {
+    color: crimson;
+    font-weight: bold;
+    margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+    header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    header button {
+        align-self: flex-start;
+    }
+
+    h1 {
+        font-size: 1.4rem;
+    }
+
+    th, td {
+        font-size: 0.9rem;
+        padding: 6px;
+    }
+
+    button, input {
+        font-size: 0.95rem;
+        padding: 10px;
+    }
+
+    .card {
+        padding: 12px;
+    }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+    <h1>Asyewi Verb Conjugator</h1>
+    <button onclick="toggleMode()">🌙 / 🌸</button>
+</header>
+
+<input id="verbInput" placeholder="Enter infinitive verb (e.g. kataba)">
+<button onclick="conjugate()">Conjugate</button>
+
+<div id="output"></div>
+
+</div>
+
+<script>
+const VOWELS = "aeiou";
+const PRONOUNS = ["I", "You", "He", "She", "It", "We", "Y’all", "They"];
+const PREFIXES = {"I": "", "You": "y", "He": "t", "She": "t", "It": "w", "We": "n", "Y’all": "f", "They": "l"};
+
+function extractRoot(verb) {
+    const root = [...verb].filter(c => !VOWELS.includes(c));
+    if (root.length !== 2 && root.length !== 3) {
+        throw "Verb must have exactly 2 or 3 consonants.";
+    }
+    return root;
+}
+
+function baseForm(root, fem=false, tense="present") {
+    if (root.length === 3) {
+        const [c1,c2,c3] = root;
+        if (tense === "present") return `${c1}${fem?'i':'a'}${c2}${c3}${fem?'i':'a'}`;
+        if (tense === "past") return `${fem?'i':'a'}${c1}${c2}${fem?'i':'a'}${c3}`;
+        if (tense === "future") return `a${c1}${c2}i${c3}`;
+    } else {
+        const [c1,c2] = root;
+        if (tense === "present") return `${c1}${fem?'i':'a'}${c2}${fem?'i':'a'}`;
+        if (tense === "past") return `${fem?'i':'a'}${c1}${fem?'i':'a'}${c2}`;
+        if (tense === "future") return `a${c1}i${c2}`;
+    }
+}
+
+function buildTable(title, rows) {
+    let html = `<div class="card"><h3>${title}</h3><table>`;
+    html += "<tr><th>Pronoun</th><th>Form</th></tr>";
+    for (let [p, f] of rows) {
+        html += `<tr><td>${p}</td><td>${f}</td></tr>`;
+    }
+    html += "</table></div>";
+    return html;
+}
+
+function conjugate() {
+    const out = document.getElementById("output");
+    out.innerHTML = "";
+
+    try {
+        const verb = document.getElementById("verbInput").value.trim().toLowerCase();
+        const root = extractRoot(verb);
+
+        ["Masculine", "Feminine"].forEach((gender) => {
+            const fem = gender === "Feminine";
+
+            ["present", "past", "future"].forEach((tense) => {
+                const base = baseForm(root, fem, tense);
+                let rows = [];
+
+                PRONOUNS.forEach((p) => {
+                    let form;
+                    if (tense === "present") {
+                        form = base + PREFIXES[p];
+                    } else if (tense === "past") {
+                        form = (p === "I") ? base : PREFIXES[p] + base;
+                    } else { // future
+                        form = PREFIXES[p] + base;
+                    }
+
+                    if (gender === "Masculine" && p === "She") form = "-";
+                    if (gender === "Feminine" && p === "He") form = "-";
+
+                    rows.push([p, form]);
+                });
+
+                const title = tense.charAt(0).toUpperCase() + tense.slice(1) + ` (${gender})`;
+                out.innerHTML += buildTable(title, rows);
+            });
+        });
+
+    } catch (e) {
+        out.innerHTML = `<div class="error">${e}</div>`;
+    }
+}
+
+function toggleMode() {
+    document.body.classList.toggle("dark");
+}
+
+// Register service worker for offline
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+    .then(() => console.log('Service Worker Registered'))
+    .catch(() => console.log('Service Worker Registration Failed'));
+}
+</script>
+
+</body>
+</html>
